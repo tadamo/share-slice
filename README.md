@@ -17,6 +17,10 @@ xcodebuild -project ShareSlice.xcodeproj -scheme ShareSlice -configuration Debug
 
 The build script prints the app path under `.build/local`. It uses ad hoc signing
 and doesn't require an Apple Developer account. Run it from any directory.
+It quits Share Slice before building and resets only its Screen Recording
+permission after a successful build to clear stale consent from the old signature.
+Reopen the app and grant access when starting capture. This applies to the build
+script, not builds run directly in Xcode.
 
 ## Release packages
 
