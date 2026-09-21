@@ -11,8 +11,59 @@ Open `ShareSlice.xcodeproj`, select the **ShareSlice** scheme, and run. Select y
 From a Mac terminal:
 
 ```sh
-xcodebuild -project ShareSlice.xcodeproj -scheme ShareSlice -configuration Debug -destination 'platform=macOS' build
+./scripts/build.sh
 xcodebuild -project ShareSlice.xcodeproj -scheme ShareSlice -configuration Debug -destination 'platform=macOS' test
+```
+
+The build script prints the app path under `.build/local`. It uses ad hoc signing
+and doesn't require an Apple Developer account. Run it from any directory.
+
+## Release packages
+
+```sh
+./scripts/release.sh 0.1.0
+```
+
+This runs the tests on the host Mac, builds a Release app for Apple Silicon and
+Intel, and writes `dist/Share-Slice-0.1.0.zip`. The version must be three numbers
+separated by dots. It sets both app version fields without changing the Xcode
+project. Existing ZIPs aren't overwritten. Build products and logs stay under
+`.build/releases`; `.build` and `dist` are ignored by Git.
+
+Without signing credentials, the ZIP is for local testing. For public downloads,
+install your Developer ID Application certificate and private key in Keychain,
+then save notarization credentials using the interactive prompt:
+
+```sh
+xcrun notarytool store-credentials ShareSlice
+export DEVELOPER_ID='Developer ID Application: Your Name (TEAMID)'
+export NOTARY_PROFILE=ShareSlice
+./scripts/release.sh 0.1.0
+```
+
+Set both variables to sign and notarize the app. The script checks Apple's result,
+staples the ticket, and checks Gatekeeper before packaging. See
+[Apple's notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
+for credential setup. Move any earlier local ZIP out of `dist` before rebuilding
+the same version with signing enabled.
+
+To upload a draft, install and authenticate GitHub CLI with `gh auth login`,
+commit the release source, and push a version tag at that commit:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+./scripts/release.sh 0.1.0 --draft
+```
+
+Keep the signing variables set. `--draft` requires a clean checkout and the tag
+at HEAD on `origin`. It builds the package and uploads it with generated release
+notes using [GitHub CLI](https://cli.github.com/manual/gh_release_create).
+Review and publish the draft on GitHub. The script doesn't publish automatically.
+If you already built the signed ZIP, upload it directly instead of rebuilding:
+
+```sh
+gh release create v0.1.0 dist/Share-Slice-0.1.0.zip --verify-tag --draft --generate-notes
 ```
 
 ## Use
@@ -27,7 +78,7 @@ Change the region or aspect ratio between captures. The app remembers the last d
 
 ## Permissions and capture
 
-Screen Recording consent is managed by macOS TCC. This unsandboxed development app enables the hardened runtime in its build settings and needs no special capture entitlement or Screen Recording usage-description key. Xcode disables the hardened runtime when signing ad hoc with "Sign to Run Locally", as in the validation build below. It does not capture audio or request microphone or Accessibility access. Distribution signing and notarization are outside this MVP.
+Screen Recording consent is managed by macOS TCC. This unsandboxed development app enables the hardened runtime in its build settings and needs no special capture entitlement or Screen Recording usage-description key. Xcode disables the hardened runtime when signing ad hoc with "Sign to Run Locally", as in the validation build below. It does not capture audio or request microphone or Accessibility access. The release script enables the hardened runtime when signing with Developer ID.
 
 The preview is a regular titled, resizable NSWindow. ScreenCaptureKit excludes the Share Slice application from its own feed, including its controls and preview, without marking the preview private to other capture apps. Teams needs its own screen-sharing permissions.
 
