@@ -21,6 +21,7 @@ final class AppModel: NSObject, ObservableObject {
     @Published private(set) var errorMessage: String?
 
     private var overlay: SelectionOverlay?
+    private var regionOutline: RegionOutline?
     private var preview: PreviewWindow?
     private var capture: CaptureSession?
     private var captureID: UUID?
@@ -46,6 +47,7 @@ final class AppModel: NSObject, ObservableObject {
             }
         }
         normalizeRegion()
+        updateRegionOutline()
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),
                                                name: NSApplication.didChangeScreenParametersNotification, object: nil)
     }
@@ -79,6 +81,7 @@ final class AppModel: NSObject, ObservableObject {
         isSelecting = false
         refreshDisplays()
         normalizeRegion()
+        updateRegionOutline()
         if isCapturing {
             errorMessage = "The display configuration changed. Select the display and region again."
             Task { await stopCapture() }
@@ -87,12 +90,21 @@ final class AppModel: NSObject, ObservableObject {
 
     func displayChanged() {
         region = nil
+        updateRegionOutline()
         save()
     }
 
     func ratioChanged() {
         normalizeRegion()
+        updateRegionOutline()
         save()
+    }
+
+    private func updateRegionOutline() {
+        regionOutline?.close()
+        regionOutline = nil
+        guard !isSelecting, let screen = selectedDisplay?.screen, let region else { return }
+        regionOutline = RegionOutline(screen: screen, region: region)
     }
 
     private func normalizeRegion() {
@@ -113,6 +125,7 @@ final class AppModel: NSObject, ObservableObject {
         let initial = region ?? CGRect(x: size.width * 0.2, y: size.height * 0.2,
                                        width: size.width * 0.6, height: size.height * 0.6)
         isSelecting = true
+        updateRegionOutline()
         overlay = SelectionOverlay(screen: screen,
                                    region: RegionGeometry.constrained(initial, to: size, ratio: aspectRatio.value),
                                    ratio: aspectRatio) { [weak self] result in
@@ -124,6 +137,7 @@ final class AppModel: NSObject, ObservableObject {
                 self.region = result
                 self.save()
             }
+            self.updateRegionOutline()
         }
     }
 

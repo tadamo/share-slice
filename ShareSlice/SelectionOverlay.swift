@@ -1,5 +1,40 @@
 import AppKit
 
+@MainActor
+final class RegionOutline {
+    private let panel: NSPanel
+
+    init(screen: NSScreen, region: CGRect) {
+        let frame = RegionGeometry.appKitRect(region, screenFrame: screen.frame)
+        panel = NSPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel],
+                        backing: .buffered, defer: false)
+        panel.isReleasedWhenClosed = false
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = false
+        panel.ignoresMouseEvents = true
+        panel.hidesOnDeactivate = false
+        panel.level = .screenSaver
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        panel.contentView = RegionOutlineView(frame: CGRect(origin: .zero, size: frame.size))
+        panel.orderFrontRegardless()
+    }
+
+    func close() { panel.close() }
+}
+
+private final class RegionOutlineView: NSView {
+    override func draw(_ dirtyRect: NSRect) {
+        let outline = NSBezierPath(rect: bounds.insetBy(dx: 2, dy: 2))
+        NSColor.black.setStroke()
+        outline.lineWidth = 4
+        outline.stroke()
+        NSColor.systemCyan.setStroke()
+        outline.lineWidth = 2
+        outline.stroke()
+    }
+}
+
 private final class SelectionPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
