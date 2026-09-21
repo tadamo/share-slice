@@ -76,6 +76,10 @@ gh release create v0.1.0 dist/Share-Slice-0.1.0.zip --verify-tag --draft --gener
 
 Change the region or aspect ratio between captures. The app remembers the last display, accepted region, and aspect ratio in UserDefaults. Display changes stop an active capture so the user can check the selection again.
 
+In the selection overlay, diagonal arrows mark corner resize targets. An open hand
+marks the interior and remaining border, where dragging moves the region; the hand
+closes during the drag. A crosshair outside the region indicates drawing a new one.
+
 ## Permissions and capture
 
 Screen Recording consent is managed by macOS TCC. This unsandboxed development app enables the hardened runtime in its build settings and needs no special capture entitlement or Screen Recording usage-description key. Xcode disables the hardened runtime when signing ad hoc with "Sign to Run Locally", as in the validation build below. It does not capture audio or request microphone or Accessibility access. The release script enables the hardened runtime when signing with Developer ID.

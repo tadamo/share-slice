@@ -15,6 +15,7 @@ final class SelectionOverlay {
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
+        panel.acceptsMouseMovedEvents = true
         panel.level = .screenSaver
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         let view = SelectionView(frame: CGRect(origin: .zero, size: screen.frame.size),
@@ -24,7 +25,10 @@ final class SelectionOverlay {
         panel.makeFirstResponder(view)
     }
 
-    func close() { panel.close() }
+    func close() {
+        panel.close()
+        NSCursor.arrow.set()
+    }
 }
 
 private final class SelectionView: NSView {
@@ -37,6 +41,83 @@ private final class SelectionView: NSView {
     private var original = CGRect.zero
     private var anchor: CGPoint?
     private var moving = false
+    private var dragCursor: NSCursor?
+    private var hoverTrackingArea: NSTrackingArea?
+
+    private func cornerIndex(at point: CGPoint) -> Int? {
+        corners.firstIndex { hypot($0.x - point.x, $0.y - point.y) <= 22 }
+    }
+
+    private func canMove(at point: CGPoint) -> Bool {
+        region.insetBy(dx: -6, dy: -6).contains(point)
+    }
+
+    private func resizeCursor(for index: Int) -> NSCursor {
+        if #available(macOS 15.0, *) {
+            let positions: [NSCursor.FrameResizePosition] = [.topLeft, .topRight, .bottomLeft, .bottomRight]
+            return .frameResize(position: positions[index], directions: [.inward, .outward])
+        }
+        return Self.diagonalCursors[index == 0 || index == 3 ? 0 : 1]
+    }
+
+    // macOS 13 and 14 don't provide public diagonal resize cursors.
+    private static let diagonalCursors: [NSCursor] = [false, true].map { mirrored in
+        let image = NSImage(size: NSSize(width: 24, height: 24), flipped: false) { _ in
+            let path = NSBezierPath()
+            func point(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
+                NSPoint(x: mirrored ? 24 - x : x, y: y)
+            }
+            path.move(to: point(5, 19))
+            path.line(to: point(19, 5))
+            path.move(to: point(5, 12))
+            path.line(to: point(5, 19))
+            path.line(to: point(12, 19))
+            path.move(to: point(12, 5))
+            path.line(to: point(19, 5))
+            path.line(to: point(19, 12))
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            NSColor.white.setStroke()
+            path.lineWidth = 4
+            path.stroke()
+            NSColor.black.setStroke()
+            path.lineWidth = 2
+            path.stroke()
+            return true
+        }
+        return NSCursor(image: image, hotSpot: NSPoint(x: 12, y: 12))
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTrackingArea { removeTrackingArea(hoverTrackingArea) }
+        let area = NSTrackingArea(rect: .zero,
+                                  options: [.mouseMoved, .mouseEnteredAndExited, .cursorUpdate,
+                                            .activeInKeyWindow, .inVisibleRect],
+                                  owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    private func updateCursor(with event: NSEvent) {
+        if let dragCursor {
+            dragCursor.set()
+            return
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        if let index = cornerIndex(at: point) {
+            resizeCursor(for: index).set()
+        } else {
+            (canMove(at: point) ? NSCursor.openHand : NSCursor.crosshair).set()
+        }
+    }
+
+    override func cursorUpdate(with event: NSEvent) { updateCursor(with: event) }
+    override func mouseMoved(with event: NSEvent) { updateCursor(with: event) }
+    override func mouseEntered(with event: NSEvent) { updateCursor(with: event) }
+    override func mouseExited(with event: NSEvent) {
+        if dragCursor == nil { NSCursor.arrow.set() }
+    }
 
     init(frame: CGRect, region: CGRect, ratio: AspectRatio, completion: @escaping (CGRect?) -> Void) {
         self.region = region
@@ -88,19 +169,24 @@ private final class SelectionView: NSView {
     override func mouseDown(with event: NSEvent) {
         start = convert(event.locationInWindow, from: nil)
         original = region
-        if let index = corners.firstIndex(where: { hypot($0.x - start.x, $0.y - start.y) <= 22 }) {
+        if let index = cornerIndex(at: start) {
             anchor = corners[3 - index]
             moving = false
-        } else if region.insetBy(dx: -6, dy: -6).contains(start) {
+            dragCursor = resizeCursor(for: index)
+        } else if canMove(at: start) {
             moving = true
             anchor = nil
+            dragCursor = .closedHand
         } else {
             moving = false
             anchor = start
+            dragCursor = .crosshair
         }
+        dragCursor?.set()
     }
 
     override func mouseDragged(with event: NSEvent) {
+        dragCursor?.set()
         let point = convert(event.locationInWindow, from: nil)
         if moving {
             region = RegionGeometry.constrained(original.offsetBy(dx: point.x - start.x, dy: point.y - start.y),
@@ -113,6 +199,8 @@ private final class SelectionView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         if region.width < 32 || region.height < 32 { region = original }
+        dragCursor = nil
+        updateCursor(with: event)
         needsDisplay = true
     }
 
