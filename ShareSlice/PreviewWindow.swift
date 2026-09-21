@@ -37,7 +37,7 @@ final class PreviewWindow: NSObject, NSWindowDelegate {
                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
                           backing: .buffered, defer: false)
         super.init()
-        window.title = "Share Slice Preview"
+        window.title = "Meeting Share Window"
         window.isReleasedWhenClosed = false
         window.contentView = view
         window.contentAspectRatio = size

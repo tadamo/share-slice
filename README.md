@@ -75,9 +75,9 @@ gh release create v0.1.0 dist/Share-Slice-0.1.0.zip --verify-tag --draft --gener
 1. Choose a display and Freeform, 16:9, or 4:3. The saved region appears on launch, or a centered default appears if none is saved.
 2. Drag the Move handle to reposition the region or a corner to resize. The interior and border pass clicks through to your apps.
 3. Click **Start Capture**. Grant Screen Recording permission when prompted. If permission is denied, use the settings button, enable Share Slice, and reopen the app if macOS requests it.
-4. In Teams, choose window sharing and select **Share Slice Preview**. Keep the preview open and unminimized while sharing.
-5. Adjust the region or aspect ratio during capture to update the preview. The border turns red and the move handle says LIVE while capturing.
-6. Click **Stop Capture** or close the preview to stop. The region stays visible and adjustable.
+4. In Teams, choose window sharing and select **Meeting Share Window**. Keep the sharing window open and unminimized while sharing.
+5. Adjust the region or aspect ratio during capture to update the sharing window. The border turns red and the move handle says LIVE while capturing.
+6. Click **Stop Capture** or close the sharing window to stop. The region stays visible and adjustable.
 
 The app remembers the last display, region, and aspect ratio in UserDefaults. Display changes stop an active capture so you can check the region again. Switch displays between captures. Handles briefly pause during capture startup and shutdown.
 
@@ -85,7 +85,7 @@ The app remembers the last display, region, and aspect ratio in UserDefaults. Di
 
 Screen Recording consent is managed by macOS TCC. This unsandboxed development app enables the hardened runtime in its build settings and needs no special capture entitlement or Screen Recording usage-description key. Xcode disables the hardened runtime when signing ad hoc with "Sign to Run Locally", as in the validation build below. It does not capture audio or request microphone or Accessibility access. The release script enables the hardened runtime when signing with Developer ID.
 
-The preview is a regular titled, resizable NSWindow. ScreenCaptureKit excludes the Share Slice application from its own feed, including its controls and preview, without marking the preview private to other capture apps. Teams needs its own screen-sharing permissions.
+The sharing window is a regular titled, resizable NSWindow. ScreenCaptureKit excludes the Share Slice application from its own feed, including its controls and sharing window, without marking the sharing window private to other capture apps. Teams needs its own screen-sharing permissions.
 
 Regions use display-local logical points measured from the top left. The outline converts these coordinates to AppKit screen coordinates; handle drags convert screen deltas back to display-local points. Output dimensions apply the selected screen's backing scale. Capture runs at up to 30 fps with a three-frame ScreenCaptureKit queue. Frames go directly to an AVSampleBufferDisplayLayer; the main-thread handoff retains only the latest pending frame.
 
@@ -96,7 +96,7 @@ Regions use display-local logical points measured from the top left. The outline
 - `RegionGeometry.swift`: bounds, aspect ratios, and coordinate calculations.
 - `SelectionOverlay.swift`: persistent outline, move handle, and corner resize handles.
 - `CaptureSession.swift`: ScreenCaptureKit stream and frame delivery.
-- `PreviewWindow.swift`: shareable preview window and video layer.
+- `PreviewWindow.swift`: sharing window and video layer.
 - `ShareSliceTests/RegionGeometryTests.swift`: geometry tests.
 
 ## Validation status
@@ -128,8 +128,8 @@ Runtime validation is incomplete. The following checks remain pending:
 
 - Grant, deny, and later enable Screen Recording permission.
 - Move and resize each aspect ratio at display edges, both idle and during capture. Confirm interior clicks reach the underlying app.
-- Capture on Retina and non-Retina displays, including an ultrawide and displays arranged left of or below the main display. Verify the selected edges match the preview.
-- Move the preview over the captured region and confirm there is no recursive image.
-- Start and stop repeatedly, close the preview during capture, and unplug a captured external display.
+- Capture on Retina and non-Retina displays, including an ultrawide and displays arranged left of or below the main display. Verify the selected edges match the sharing window.
+- Move the sharing window over the captured region and confirm there is no recursive image.
+- Start and stop repeatedly, close the sharing window during capture, and unplug a captured external display.
 - Relaunch and confirm the saved display, region, and aspect ratio return.
-- Share **Share Slice Preview** in Teams and confirm a remote participant sees live content with the expected crop and proportions. Check CPU and memory during a longer capture.
+- Share **Meeting Share Window** in Teams and confirm a remote participant sees live content with the expected crop and proportions. Check CPU and memory during a longer capture.
