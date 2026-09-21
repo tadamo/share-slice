@@ -2,7 +2,7 @@
 
 A native macOS utility that captures a selected display region and shows it in a normal window for screen sharing. The source display keeps its resolution.
 
-Requires macOS 13 or later and Xcode 15 or later. Uses SwiftUI, AppKit, ScreenCaptureKit, and AVFoundation. No packages or third-party dependencies.
+Requires macOS 13 or later and Xcode 15 or later. The test target requires macOS 14 or later to match the XCTest libraries bundled with Xcode 27. Uses SwiftUI, AppKit, ScreenCaptureKit, and AVFoundation. No packages or third-party dependencies.
 
 ## Build and run
 
@@ -27,7 +27,7 @@ Change the region or aspect ratio between captures. The app remembers the last d
 
 ## Permissions and capture
 
-Screen Recording consent is managed by macOS TCC. This unsandboxed development app uses the hardened runtime and needs no special capture entitlement or Screen Recording usage-description key. It does not capture audio or request microphone or Accessibility access. Distribution signing and notarization are outside this MVP.
+Screen Recording consent is managed by macOS TCC. This unsandboxed development app enables the hardened runtime in its build settings and needs no special capture entitlement or Screen Recording usage-description key. Xcode disables the hardened runtime when signing ad hoc with "Sign to Run Locally", as in the validation build below. It does not capture audio or request microphone or Accessibility access. Distribution signing and notarization are outside this MVP.
 
 The preview is a regular titled, resizable NSWindow. ScreenCaptureKit excludes the Share Slice application from its own feed, including its controls and preview, without marking the preview private to other capture apps. Teams needs its own screen-sharing permissions.
 
@@ -45,9 +45,20 @@ Regions use display-local logical points measured from the top left. The overlay
 
 ## Validation status
 
-The initial implementation was created in a Linux workspace without Swift, Xcode, or the macOS SDK. It has not been compiled or run on macOS. The unit tests and Teams compatibility have not been verified. A successful Mac build and the checks below are required before calling this a working release.
+Checked on September 21, 2026, starting from commit `3aec281`, with Xcode 27.0, build 27A266a, on macOS 26.6.2, build 25G83.
 
-On a Mac, run the build and tests above, then check:
+- Debug app build passed for arm64 and x86_64. No Swift compiler errors or warnings appeared.
+- All 8 geometry tests passed on arm64, including coordinate conversion, Retina output sizing, bounds, and aspect ratios. These are calculation tests, not proof of live screen cropping.
+- Fixed test linker warnings by setting the test target's minimum macOS version to 14. The app still targets macOS 13.
+- Xcode still reports `Metadata extraction skipped, no AppIntents.framework dependency found`. This comes from its metadata tool, not the Swift compiler. The app has no App Intents.
+- The app launched and listed the built-in Retina display at 1728 × 1117 logical points. The selection overlay opened. Escape cancelled it and returned to the controls without accepting a region.
+- Automated drawing could not run because the UI tool returned `windowNotFoundAtPosition` for the borderless overlay. Tom subsequently reported that selection seemed to work; individual move and resize checks remain unconfirmed.
+- Increased the selection border to 4 points in cyan with a black outline, enlarged corner handles and their drag targets, and added a 6-point margin for moving from the border. The updated app builds and all 8 geometry tests pass. The new appearance and drag targets still need a manual check.
+- The first test attempt was blocked by sandbox access to Apple's test service. The rerun outside the sandbox passed, as did the rerun after the test-target fix.
+
+Local logs are `/private/tmp/share-slice-build.log` and `/private/tmp/share-slice-test.log`. Build products and XCTest results are under `/private/tmp/share-slice-derived`. These temporary files aren't committed.
+
+Runtime validation is incomplete. The following checks remain pending:
 
 - Grant, deny, and later enable Screen Recording permission.
 - Draw, move, and resize each aspect ratio at display edges. Cancel a selection and confirm the previous region remains.

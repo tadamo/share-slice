@@ -58,13 +58,20 @@ private final class SelectionView: NSView {
         shade.windingRule = .evenOdd
         NSColor.black.withAlphaComponent(0.45).setFill()
         shade.fill()
-        NSColor.white.setStroke()
         let outline = NSBezierPath(rect: region)
-        outline.lineWidth = 2
+        NSColor.black.setStroke()
+        outline.lineWidth = 7
         outline.stroke()
-        NSColor.white.setFill()
+        NSColor.systemCyan.setStroke()
+        outline.lineWidth = 4
+        outline.stroke()
         for point in corners {
-            NSBezierPath(ovalIn: CGRect(x: point.x - 5, y: point.y - 5, width: 10, height: 10)).fill()
+            let handle = NSBezierPath(ovalIn: CGRect(x: point.x - 8, y: point.y - 8, width: 16, height: 16))
+            NSColor.systemCyan.setFill()
+            handle.fill()
+            NSColor.black.setStroke()
+            handle.lineWidth = 2
+            handle.stroke()
         }
         let text = "Drag outside to draw • Drag inside to move • Drag corners to resize\nReturn to use region • Escape to cancel • \(ratio.rawValue)"
         let style = NSMutableParagraphStyle()
@@ -81,10 +88,10 @@ private final class SelectionView: NSView {
     override func mouseDown(with event: NSEvent) {
         start = convert(event.locationInWindow, from: nil)
         original = region
-        if let index = corners.firstIndex(where: { hypot($0.x - start.x, $0.y - start.y) <= 14 }) {
+        if let index = corners.firstIndex(where: { hypot($0.x - start.x, $0.y - start.y) <= 22 }) {
             anchor = corners[3 - index]
             moving = false
-        } else if region.contains(start) {
+        } else if region.insetBy(dx: -6, dy: -6).contains(start) {
             moving = true
             anchor = nil
         } else {
