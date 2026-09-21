@@ -31,10 +31,29 @@ Open `ShareSlice.xcodeproj`, select the ShareSlice scheme, and run. Or build fro
 ./scripts/build.sh
 ```
 
-The script quits the running app, builds into `.build/local`, and resets its Screen Recording permission. Grant access again on the next capture.
+The script quits the running app and builds into `.build/local` using automatic signing. Sign into Xcode with the configured developer team before building. Screen Recording permission should persist across signed rebuilds.
 
 Run tests:
 
 ```sh
 xcodebuild -project ShareSlice.xcodeproj -scheme ShareSlice -configuration Debug -destination 'platform=macOS' test
 ```
+
+## Release from your Mac
+
+GitHub Actions runs tests. Build and upload releases locally with a Developer ID Application certificate and notarization credentials stored in Keychain.
+
+Set these in the terminal used for the release:
+
+```sh
+export DEVELOPER_ID="Developer ID Application: THOMAS MICHAEL ADAMO (66LB6ANTYP)"
+export NOTARY_PROFILE="share-slice-notary"
+```
+
+Commit the release changes, then create and push a `vVERSION` tag at that commit. With a clean working tree, run this command, replacing `VERSION` with the tagged version:
+
+```sh
+./scripts/release.sh VERSION --draft
+```
+
+The script tests, builds for Apple Silicon and Intel, signs, notarizes, and uploads a draft GitHub release. Review the draft before publishing it. The ZIP is also saved in `dist/`.
