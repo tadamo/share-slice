@@ -16,11 +16,12 @@ final class AppModel: NSObject, ObservableObject {
     @Published private(set) var region: CGRect?
     @Published private(set) var isCapturing = false
     @Published private(set) var isBusy = false
-    @Published private(set) var isSelecting = false
     @Published private(set) var needsPermission = false
     @Published private(set) var errorMessage: String?
 
-    private var overlay: SelectionOverlay?
+    private var regionUpdateTask: Task<Void, Never>?
+    private var pendingRegion: CGRect?
+    private var outlineDisplayID: CGDirectDisplayID?
     private var regionOutline: RegionOutline?
     private var preview: PreviewWindow?
     private var capture: CaptureSession?
@@ -55,7 +56,7 @@ final class AppModel: NSObject, ObservableObject {
     private var selectedDisplay: DisplayChoice? { displays.first { $0.id == selectedDisplayID } }
 
     var regionDescription: String {
-        guard let region else { return "Select a region to begin." }
+        guard let region else { return "No display available." }
         return "Region: \(Int(region.width)) × \(Int(region.height)) points"
     }
 
@@ -76,9 +77,8 @@ final class AppModel: NSObject, ObservableObject {
 
     @objc private func screensChanged() {
         displayRevision += 1
-        overlay?.close()
-        overlay = nil
-        isSelecting = false
+        regionOutline?.close()
+        regionOutline = nil
         refreshDisplays()
         normalizeRegion()
         updateRegionOutline()
@@ -90,6 +90,7 @@ final class AppModel: NSObject, ObservableObject {
 
     func displayChanged() {
         region = nil
+        normalizeRegion()
         updateRegionOutline()
         save()
     }
@@ -98,19 +99,58 @@ final class AppModel: NSObject, ObservableObject {
         normalizeRegion()
         updateRegionOutline()
         save()
+        queueRegionUpdate()
     }
 
     private func updateRegionOutline() {
-        regionOutline?.close()
-        regionOutline = nil
-        guard !isSelecting, let screen = selectedDisplay?.screen, let region else { return }
-        regionOutline = RegionOutline(screen: screen, region: region)
+        guard let screen = selectedDisplay?.screen, let region else {
+            regionOutline?.close()
+            regionOutline = nil
+            outlineDisplayID = nil
+            return
+        }
+        if regionOutline == nil || outlineDisplayID != selectedDisplayID {
+            regionOutline?.close()
+            regionOutline = RegionOutline(screen: screen) { [weak self] region, finished in
+                guard let self, !self.isBusy else { return }
+                self.region = region
+                self.updateRegionOutline()
+                if finished { self.save() }
+                self.queueRegionUpdate()
+            }
+            outlineDisplayID = selectedDisplayID
+        }
+        regionOutline?.update(region: region, ratio: aspectRatio, capturing: isCapturing, enabled: !isBusy)
     }
 
     private func normalizeRegion() {
-        guard let screen = selectedDisplay?.screen, let region else { return }
-        let valid = RegionGeometry.constrained(region, to: screen.frame.size, ratio: aspectRatio.value)
-        self.region = valid.isEmpty ? nil : valid
+        guard let screen = selectedDisplay?.screen else { region = nil; return }
+        let size = screen.frame.size
+        let fallback = RegionGeometry.defaultRegion(in: size, ratio: aspectRatio.value)
+        let valid = RegionGeometry.constrained(region ?? fallback, to: size, ratio: aspectRatio.value)
+        region = valid.isEmpty ? fallback : valid
+    }
+
+    private func queueRegionUpdate() {
+        guard isCapturing, let session = capture, let scale = selectedDisplay?.screen.backingScaleFactor else { return }
+        pendingRegion = region
+        guard regionUpdateTask == nil else { return }
+        regionUpdateTask = Task { [weak self] in
+            guard let self else { return }
+            defer { self.regionUpdateTask = nil }
+            while self.isCapturing, let region = self.pendingRegion {
+                self.pendingRegion = nil
+                do {
+                    try await session.update(region: region, scale: scale)
+                    guard self.isCapturing else { return }
+                    self.preview?.updateAspectRatio(region.size)
+                } catch {
+                    self.errorMessage = "Could not update capture: \(error.localizedDescription)"
+                    Task { await self.stopCapture() }
+                    return
+                }
+            }
+        }
     }
 
     private func save() {
@@ -118,35 +158,16 @@ final class AppModel: NSObject, ObservableObject {
         if let data = try? JSONEncoder().encode(preferences) { defaults.set(data, forKey: "selection") }
     }
 
-    func selectRegion() {
-        guard !isBusy, !isCapturing, !isSelecting, let screen = selectedDisplay?.screen else { return }
-        errorMessage = nil
-        let size = screen.frame.size
-        let initial = region ?? CGRect(x: size.width * 0.2, y: size.height * 0.2,
-                                       width: size.width * 0.6, height: size.height * 0.6)
-        isSelecting = true
-        updateRegionOutline()
-        overlay = SelectionOverlay(screen: screen,
-                                   region: RegionGeometry.constrained(initial, to: size, ratio: aspectRatio.value),
-                                   ratio: aspectRatio) { [weak self] result in
-            guard let self else { return }
-            self.overlay?.close()
-            self.overlay = nil
-            self.isSelecting = false
-            if let result {
-                self.region = result
-                self.save()
-            }
-            self.updateRegionOutline()
-        }
-    }
-
     func startCapture() async {
-        guard !isBusy, !isCapturing, !isSelecting, let choice = selectedDisplay, let region else { return }
+        guard !isBusy, !isCapturing, let choice = selectedDisplay, let region else { return }
         isBusy = true
         errorMessage = nil
         startupFailure = nil
-        defer { isBusy = false }
+        updateRegionOutline()
+        defer {
+            isBusy = false
+            updateRegionOutline()
+        }
         guard CGPreflightScreenCaptureAccess() || CGRequestScreenCaptureAccess() else {
             needsPermission = true
             errorMessage = "Share Slice needs Screen Recording permission to capture the selected region."
@@ -204,7 +225,14 @@ final class AppModel: NSObject, ObservableObject {
         isBusy = true
         capture = nil
         captureID = nil
-        defer { isBusy = false }
+        isCapturing = false
+        pendingRegion = nil
+        updateRegionOutline()
+        defer {
+            isBusy = false
+            updateRegionOutline()
+        }
+        await regionUpdateTask?.value
         do { try await session.stop() }
         catch { errorMessage = "Could not stop capture cleanly: \(error.localizedDescription)" }
         preview?.close()

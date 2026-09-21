@@ -72,17 +72,14 @@ gh release create v0.1.0 dist/Share-Slice-0.1.0.zip --verify-tag --draft --gener
 
 ## Use
 
-1. Choose a display and Freeform, 16:9, or 4:3.
-2. Click **Select Region…**. Drag outside the rectangle to draw, inside to move, or a corner to resize. Press Return to accept or Escape to cancel.
+1. Choose a display and Freeform, 16:9, or 4:3. The saved region appears on launch, or a centered default appears if none is saved.
+2. Drag the Move handle to reposition the region or a corner to resize. The interior and border pass clicks through to your apps.
 3. Click **Start Capture**. Grant Screen Recording permission when prompted. If permission is denied, use the settings button, enable Share Slice, and reopen the app if macOS requests it.
 4. In Teams, choose window sharing and select **Share Slice Preview**. Keep the preview open and unminimized while sharing.
-5. Click **Stop Capture** or close the preview to stop.
+5. Adjust the region or aspect ratio during capture to update the preview. The border turns red and the move handle says LIVE while capturing.
+6. Click **Stop Capture** or close the preview to stop. The region stays visible and adjustable.
 
-Change the region or aspect ratio between captures. The app remembers the last display, accepted region, and aspect ratio in UserDefaults. Display changes stop an active capture so the user can check the selection again.
-
-In the selection overlay, diagonal arrows mark corner resize targets. An open hand
-marks the interior and remaining border, where dragging moves the region; the hand
-closes during the drag. A crosshair outside the region indicates drawing a new one.
+The app remembers the last display, region, and aspect ratio in UserDefaults. Display changes stop an active capture so you can check the region again. Switch displays between captures. Handles briefly pause during capture startup and shutdown.
 
 ## Permissions and capture
 
@@ -90,19 +87,29 @@ Screen Recording consent is managed by macOS TCC. This unsandboxed development a
 
 The preview is a regular titled, resizable NSWindow. ScreenCaptureKit excludes the Share Slice application from its own feed, including its controls and preview, without marking the preview private to other capture apps. Teams needs its own screen-sharing permissions.
 
-Regions use display-local logical points measured from the top left. The overlay uses a flipped AppKit view with the same coordinates as the capture source rectangle. Output dimensions apply the selected screen's backing scale. Capture runs at up to 30 fps with a three-frame ScreenCaptureKit queue. Frames go directly to an AVSampleBufferDisplayLayer; the main-thread handoff retains only the latest pending frame.
+Regions use display-local logical points measured from the top left. The outline converts these coordinates to AppKit screen coordinates; handle drags convert screen deltas back to display-local points. Output dimensions apply the selected screen's backing scale. Capture runs at up to 30 fps with a three-frame ScreenCaptureKit queue. Frames go directly to an AVSampleBufferDisplayLayer; the main-thread handoff retains only the latest pending frame.
 
 ## Files
 
 - `ShareSliceApp.swift`: app entry point and control window.
 - `AppModel.swift`: display selection, permissions, persistence, and capture lifecycle.
 - `RegionGeometry.swift`: bounds, aspect ratios, and coordinate calculations.
-- `SelectionOverlay.swift`: drawing, moving, and resizing the region.
+- `SelectionOverlay.swift`: persistent outline, move handle, and corner resize handles.
 - `CaptureSession.swift`: ScreenCaptureKit stream and frame delivery.
 - `PreviewWindow.swift`: shareable preview window and video layer.
 - `ShareSliceTests/RegionGeometryTests.swift`: geometry tests.
 
 ## Validation status
+
+The always-adjustable region change was checked on September 21, 2026:
+
+- The arm64 Debug build passed and all 10 geometry tests passed. No Swift compiler warnings were introduced. The existing App Intents metadata warning remains.
+- The local app launched with the saved region dimensions and the new controls. The help text fits, and Select Region is gone.
+- Starting capture showed the missing Screen Recording permission error. Live capture and live region updates could not be verified on this build.
+- Handle dragging, click-through behavior, display-edge behavior, and the live border still need a manual check. The UI tool exposed only the control window.
+- The built app is at `.build/local/Build/Products/Debug/Share Slice.app`. Build and test logs are `/private/tmp/share-slice-build.log` and `/private/tmp/share-slice-test.log`.
+
+### Earlier validation
 
 Checked on September 21, 2026, starting from commit `3aec281`, with Xcode 27.0, build 27A266a, on macOS 26.6.2, build 25G83.
 
@@ -120,7 +127,7 @@ Local logs are `/private/tmp/share-slice-build.log` and `/private/tmp/share-slic
 Runtime validation is incomplete. The following checks remain pending:
 
 - Grant, deny, and later enable Screen Recording permission.
-- Draw, move, and resize each aspect ratio at display edges. Cancel a selection and confirm the previous region remains.
+- Move and resize each aspect ratio at display edges, both idle and during capture. Confirm interior clicks reach the underlying app.
 - Capture on Retina and non-Retina displays, including an ultrawide and displays arranged left of or below the main display. Verify the selected edges match the preview.
 - Move the preview over the captured region and confirm there is no recursive image.
 - Start and stop repeatedly, close the preview during capture, and unplug a captured external display.

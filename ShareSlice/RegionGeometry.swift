@@ -17,6 +17,14 @@ enum AspectRatio: String, CaseIterable, Identifiable {
 
 enum RegionGeometry {
     // Regions use display-local points, with the origin at the top left.
+    static func defaultRegion(in bounds: CGSize, ratio: CGFloat?) -> CGRect {
+        let rect = constrained(CGRect(origin: .zero, size: CGSize(width: bounds.width * 0.6,
+                                                                 height: bounds.height * 0.6)),
+                               to: bounds, ratio: ratio)
+        return CGRect(x: (bounds.width - rect.width) / 2, y: (bounds.height - rect.height) / 2,
+                      width: rect.width, height: rect.height)
+    }
+
     static func constrained(_ rect: CGRect, to bounds: CGSize, ratio: CGFloat? = nil) -> CGRect {
         guard bounds.width > 0, bounds.height > 0,
               [rect.origin.x, rect.origin.y, rect.width, rect.height].allSatisfy({ $0.isFinite }) else {

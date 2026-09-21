@@ -2,6 +2,30 @@ import XCTest
 @testable import ShareSlice
 
 final class RegionGeometryTests: XCTestCase {
+    func testDefaultRegionIsCenteredAndFitsEveryRatio() {
+        for bounds in [CGSize(width: 3440, height: 1440), CGSize(width: 900, height: 1600)] {
+            for ratio in AspectRatio.allCases {
+                let region = RegionGeometry.defaultRegion(in: bounds, ratio: ratio.value)
+                XCTAssertEqual(region.midX, bounds.width / 2, accuracy: 0.0001)
+                XCTAssertEqual(region.midY, bounds.height / 2, accuracy: 0.0001)
+                XCTAssertTrue(CGRect(origin: .zero, size: bounds).contains(region))
+                if let value = ratio.value {
+                    XCTAssertEqual(region.width / region.height, value, accuracy: 0.0001)
+                }
+            }
+        }
+    }
+
+    func testMovingRegionToEdgesPreservesSize() {
+        let size = CGSize(width: 640, height: 360)
+        let bounds = CGSize(width: 1920, height: 1080)
+        for point in [CGPoint(x: -2000, y: -2000), CGPoint(x: 3000, y: 3000)] {
+            let region = RegionGeometry.constrained(CGRect(origin: point, size: size), to: bounds)
+            XCTAssertEqual(region.size, size)
+            XCTAssertTrue(CGRect(origin: .zero, size: bounds).contains(region))
+        }
+    }
+
     func testAppKitConversionOnDisplayLeftOfMainDisplay() {
         let screen = CGRect(x: -1920, y: 200, width: 1920, height: 1080)
         let region = CGRect(x: 100, y: 50, width: 640, height: 360)

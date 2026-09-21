@@ -45,6 +45,17 @@ final class PreviewWindow: NSObject, NSWindowDelegate {
         window.center()
     }
 
+    func updateAspectRatio(_ size: CGSize) {
+        guard window.contentAspectRatio != size else { return }
+        let current = window.contentLayoutRect.size
+        let available = window.screen?.visibleFrame.size ?? current
+        let width = min(current.width, available.width)
+        let height = width * size.height / size.width
+        let scale = min(1, max(1, available.height - 40) / height)
+        window.contentAspectRatio = size
+        window.setContentSize(CGSize(width: width * scale, height: height * scale))
+    }
+
     func show() { window.makeKeyAndOrderFront(nil) }
     func close() {
         window.delegate = nil

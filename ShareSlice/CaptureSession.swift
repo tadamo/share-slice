@@ -19,6 +19,19 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     func start(display: SCDisplay, excluding applications: [SCRunningApplication],
                region: CGRect, scale: CGFloat) async throws {
         let filter = SCContentFilter(display: display, excludingApplications: applications, exceptingWindows: [])
+        let configuration = configuration(region: region, scale: scale)
+        let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
+        self.stream = stream
+        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
+        try await stream.startCapture()
+    }
+
+    func update(region: CGRect, scale: CGFloat) async throws {
+        guard let stream else { return }
+        try await stream.updateConfiguration(configuration(region: region, scale: scale))
+    }
+
+    private func configuration(region: CGRect, scale: CGFloat) -> SCStreamConfiguration {
         let configuration = SCStreamConfiguration()
         configuration.sourceRect = region
         let pixels = RegionGeometry.pixelSize(region, scale: scale)
@@ -29,10 +42,7 @@ final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
         configuration.showsCursor = true
         configuration.capturesAudio = false
-        let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
-        self.stream = stream
-        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
-        try await stream.startCapture()
+        return configuration
     }
 
     func stop() async throws {

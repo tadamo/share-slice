@@ -20,27 +20,28 @@ private struct ControlView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Share Slice").font(.title2.bold())
-            Text("Choose a region, then share the preview window in Teams.")
+            Text("Start capture, then share the preview window in Teams.")
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             Picker("Display", selection: $model.selectedDisplayID) {
                 ForEach(model.displays) { display in
                     Text(display.name).tag(display.id)
                 }
             }
-            .disabled(model.isBusy || model.isCapturing || model.isSelecting)
+            .disabled(model.isBusy || model.isCapturing)
             .onChange(of: model.selectedDisplayID) { _ in model.displayChanged() }
 
             Picker("Aspect ratio", selection: $model.aspectRatio) {
                 ForEach(AspectRatio.allCases) { ratio in Text(ratio.rawValue).tag(ratio) }
             }
-            .disabled(model.isBusy || model.isCapturing || model.isSelecting)
+            .disabled(model.isBusy)
             .onChange(of: model.aspectRatio) { _ in model.ratioChanged() }
 
+            Text("Drag Move to reposition the region or a corner to resize.")
+                .font(.caption).foregroundStyle(.secondary)
             Text(model.regionDescription).font(.callout).foregroundStyle(.secondary)
             HStack {
-                Button("Select Region…") { model.selectRegion() }
-                    .disabled(model.displays.isEmpty || model.isBusy || model.isCapturing || model.isSelecting)
                 Spacer()
                 if model.isCapturing {
                     Button("Stop Capture") { Task { await model.stopCapture() } }
@@ -48,7 +49,7 @@ private struct ControlView: View {
                 } else {
                     Button("Start Capture") { Task { await model.startCapture() } }
                         .keyboardShortcut(.defaultAction)
-                        .disabled(model.region == nil || model.isBusy || model.isSelecting)
+                        .disabled(model.region == nil || model.isBusy)
                 }
             }
             if model.isBusy { ProgressView().controlSize(.small) }
