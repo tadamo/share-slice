@@ -71,7 +71,7 @@ if [[ -n "$identity" ]]; then
     xcrun stapler validate "$app"
     spctl --assess --type execute --verbose=2 "$app"
 else
-    echo "Local package uses ad hoc signing. Public distribution needs Developer ID signing and notarization."
+    echo "Package uses ad hoc signing without notarization. macOS may require Open Anyway in Privacy & Security."
 fi
 
 ditto -c -k --keepParent "$app" "$work/Share-Slice-$version.zip"

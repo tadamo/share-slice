@@ -2,7 +2,19 @@
 
 A native macOS utility that captures a selected display region and shows it in a normal window for screen sharing. The source display keeps its resolution.
 
-Requires macOS 13 or later and Xcode 15 or later. The test target requires macOS 14 or later to match the XCTest libraries bundled with Xcode 27. Uses SwiftUI, AppKit, ScreenCaptureKit, and AVFoundation. No packages or third-party dependencies.
+Requires macOS 13 or later. Building from source requires Xcode 15 or later. The test target requires macOS 14 or later to match the XCTest libraries bundled with Xcode 27. Uses SwiftUI, AppKit, ScreenCaptureKit, and AVFoundation. No packages or third-party dependencies.
+
+## Download and install
+
+Download the app ZIP from [Releases](https://github.com/tadamo/share-slice/releases),
+unzip it, and drag **Share Slice.app** to **Applications**. Xcode isn't needed.
+The ZIP supports Apple Silicon and Intel Macs.
+
+GitHub Actions builds use ad hoc signing and aren't notarized by Apple. If macOS
+blocks the app, try opening it, then go to **System Settings > Privacy & Security >
+Open Anyway**. Only allow it if you trust the download. See
+[Apple's instructions](https://support.apple.com/en-us/102445).
+Grant Screen Recording access when starting capture.
 
 ## Build and run
 
@@ -22,6 +34,30 @@ permission after a successful build to clear stale consent from the old signatur
 Reopen the app and grant access when starting capture. This applies to the build
 script, not builds run directly in Xcode.
 
+## GitHub releases
+
+The [release workflow](.github/workflows/release.yml) runs when you push a tag such
+as `v0.1.1`. It tests the app, builds both Mac architectures, and publishes a release
+with the app ZIP and installation steps. It uses GitHub's built-in token; no extra
+secrets or Apple Developer account are needed. Actions must be enabled in the repo.
+
+Commit and push the workflow and app changes before creating a release tag:
+
+```sh
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+Tags must use `vMAJOR.MINOR.PATCH`. Pushing a matching tag publishes automatically
+after the build and tests pass. Reruns won't overwrite an existing release. If a
+run fails before creating a release, rerun it from Actions. If a release already
+exists, inspect it and use a new version for any correction.
+
+These automated downloads aren't Developer ID signed or notarized. For a signed
+release, use the local process below with a version tag outside the `v*` pattern,
+such as `signed-0.1.1`, and upload the ZIP with `gh release create`. Don't push a
+`v*` tag for that release, since it triggers the ad hoc build.
+
 ## Release packages
 
 ```sh
@@ -34,8 +70,9 @@ separated by dots. It sets both app version fields without changing the Xcode
 project. Existing ZIPs aren't overwritten. Build products and logs stay under
 `.build/releases`; `.build` and `dist` are ignored by Git.
 
-Without signing credentials, the ZIP is for local testing. For public downloads,
-install your Developer ID Application certificate and private key in Keychain,
+Without signing credentials, macOS may block the ZIP's app until the user allows it
+in Privacy & Security. To sign and notarize a download, install your Developer ID
+Application certificate and private key in Keychain,
 then save notarization credentials using the interactive prompt:
 
 ```sh
@@ -51,24 +88,18 @@ staples the ticket, and checks Gatekeeper before packaging. See
 for credential setup. Move any earlier local ZIP out of `dist` before rebuilding
 the same version with signing enabled.
 
-To upload a draft, install and authenticate GitHub CLI with `gh auth login`,
-commit the release source, and push a version tag at that commit:
+To upload a signed draft without triggering the automated ad hoc release, build
+with the signing variables set, commit and push the source, then use a separate tag:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
-./scripts/release.sh 0.1.0 --draft
+git tag signed-0.1.1
+git push origin signed-0.1.1
+gh release create signed-0.1.1 dist/Share-Slice-0.1.1.zip --verify-tag --draft --generate-notes
 ```
 
-Keep the signing variables set. `--draft` requires a clean checkout and the tag
-at HEAD on `origin`. It builds the package and uploads it with generated release
-notes using [GitHub CLI](https://cli.github.com/manual/gh_release_create).
-Review and publish the draft on GitHub. The script doesn't publish automatically.
-If you already built the signed ZIP, upload it directly instead of rebuilding:
-
-```sh
-gh release create v0.1.0 dist/Share-Slice-0.1.0.zip --verify-tag --draft --generate-notes
-```
+Review and publish the draft on GitHub. GitHub CLI requires `gh auth login` first.
+The release script's older `--draft` option uses `v*` tags, so don't use it while
+the automated release workflow is enabled.
 
 ## Use
 
