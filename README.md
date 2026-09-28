@@ -41,19 +41,16 @@ xcodebuild -project ShareSlice.xcodeproj -scheme ShareSlice -configuration Debug
 
 ## Release from your Mac
 
-GitHub Actions runs tests. Build and upload releases locally with a Developer ID Application certificate and notarization credentials stored in Keychain.
+GitHub Actions runs tests. Create releases on your Mac using the Developer ID certificate and `share-slice-notary` Keychain profile already set up there. GitHub CLI must be signed in with `gh auth login`.
 
-Set these in the terminal used for the release:
-
-```sh
-export DEVELOPER_ID="Developer ID Application: THOMAS MICHAEL ADAMO (66LB6ANTYP)"
-export NOTARY_PROFILE="share-slice-notary"
-```
-
-Commit the release changes, then create and push a `vVERSION` tag at that commit. With a clean working tree, run this command, replacing `VERSION` with the tagged version:
+Commit your changes on `main`, then run:
 
 ```sh
-./scripts/release.sh VERSION --draft
+./scripts/release.sh 1.0.1
 ```
 
-The script tests, builds for Apple Silicon and Intel, signs, notarizes, and uploads a draft GitHub release. Review the draft before publishing it. The ZIP is also saved in `dist/`.
+Choose a new version each time. The script tests, builds for Apple Silicon and Intel, signs, notarizes, verifies the ZIP, pushes `main` and the new version tag, and publishes the GitHub release. It includes install instructions and generated release notes. You don't need to create tags yourself.
+
+Use `--draft` to review the release on GitHub before publishing, or `--local` to build only. Files are saved in `dist/`. Existing tags and ZIPs won't be overwritten. If upload fails after the tag is pushed, the script prints a retry command.
+
+The signing identity and Keychain profile have defaults for this Mac. Set `DEVELOPER_ID` or `NOTARY_PROFILE` to override them on another setup. Credentials stay in Keychain.
