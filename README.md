@@ -8,7 +8,7 @@ Requires macOS 13 or later. Supports Apple Silicon and Intel Macs.
 
 Download the ZIP from [Releases](https://github.com/tadamo/share-slice/releases), unzip it, and drag Share Slice.app to Applications.
 
-The app isn't notarized. If macOS blocks it, open System Settings > Privacy & Security and choose Open Anyway.
+Releases starting with v1.0.0 are signed with Developer ID and notarized by Apple. Screen Recording access still requires your permission.
 
 ## Use
 
