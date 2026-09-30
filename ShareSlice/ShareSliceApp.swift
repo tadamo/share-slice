@@ -20,7 +20,7 @@ private struct ControlView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Share Slice").font(.title2.bold())
-            Text("Start capture, then select Meeting Share Window in Teams.")
+            Text("Start capture, then in Teams choose Share > Window > \"\(PreviewWindow.title)\".")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -44,6 +44,8 @@ private struct ControlView: View {
             HStack {
                 Spacer()
                 if model.isCapturing {
+                    Button("Show Share Window") { model.showShareWindow() }
+                        .disabled(model.isBusy)
                     Button("Stop Capture") { Task { await model.stopCapture() } }
                         .disabled(model.isBusy)
                 } else {

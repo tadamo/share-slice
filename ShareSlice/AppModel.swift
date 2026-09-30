@@ -220,6 +220,11 @@ final class AppModel: NSObject, ObservableObject {
         }
     }
 
+    func showShareWindow() {
+        guard isCapturing, !isBusy else { return }
+        preview?.show()
+    }
+
     func stopCapture() async {
         guard let session = capture, !isBusy else { return }
         isBusy = true

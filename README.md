@@ -15,7 +15,7 @@ Releases starting with v1.0.0 are signed with Developer ID and notarized by Appl
 1. Open Share Slice and choose a display and aspect ratio.
 2. Drag the Move handle to position the capture area. Drag a corner to resize it.
 3. Click Start Capture and grant Screen Recording access when prompted.
-4. In a Teams meeting, click Share, choose Window, and select Meeting Share Window. Keep that window open and unminimized. See [Teams sharing help](https://support.microsoft.com/en-us/teams/meetings/present-content-in-microsoft-teams-meetings).
+4. In a Teams meeting, click Share, choose Window, and select "🖥️ Share Slice - Share This Window". Keep that window open and unminimized. Click Show Share Window in Share Slice if you lose track of it. See [Teams sharing help](https://support.microsoft.com/en-us/teams/meetings/present-content-in-microsoft-teams-meetings).
 5. Move or resize the capture area as needed, even while sharing.
 6. Stop sharing in Teams when done, then click Stop Capture in Share Slice.
 

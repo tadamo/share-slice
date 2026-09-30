@@ -25,6 +25,8 @@ final class PreviewView: NSView {
 
 @MainActor
 final class PreviewWindow: NSObject, NSWindowDelegate {
+    static let title = "🖥️ Share Slice - Share This Window"
+
     let view = PreviewView(frame: .zero)
     private let window: NSWindow
     var onClose: (() -> Void)?
@@ -37,7 +39,7 @@ final class PreviewWindow: NSObject, NSWindowDelegate {
                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
                           backing: .buffered, defer: false)
         super.init()
-        window.title = "Meeting Share Window"
+        window.title = Self.title
         window.isReleasedWhenClosed = false
         window.contentView = view
         window.contentAspectRatio = size
@@ -56,7 +58,11 @@ final class PreviewWindow: NSObject, NSWindowDelegate {
         window.setContentSize(CGSize(width: width * scale, height: height * scale))
     }
 
-    func show() { window.makeKeyAndOrderFront(nil) }
+    func show() {
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
     func close() {
         window.delegate = nil
         window.close()
