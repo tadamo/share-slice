@@ -3,27 +3,52 @@ set -euo pipefail
 
 fail() { echo "Error: $*" >&2; exit 1; }
 usage() {
-    echo "Usage: $0 VERSION [--draft|--local]"
+    echo "Usage: $0 [VERSION] [--draft|--local]"
+    echo "Without VERSION, prompts with the next patch version from local and origin tags."
     echo "Tests, signs, notarizes, pushes main and a new tag, and publishes a GitHub release."
     echo "--draft uploads a draft; --local only builds the signed ZIP."
     echo "Optional overrides: DEVELOPER_ID, NOTARY_PROFILE."
 }
 
 if [[ $# -eq 1 && "$1" == --help ]]; then usage; exit 0; fi
-[[ $# -ge 1 && $# -le 2 ]] || { usage >&2; exit 1; }
-version="$1"
-[[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail "Version must be MAJOR.MINOR.PATCH without leading zeros."
+[[ $# -le 2 ]] || { usage >&2; exit 1; }
+version_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+version=""
+if [[ $# -gt 0 && "$1" != --* ]]; then
+    version="$1"
+    [[ "$version" =~ $version_pattern ]] || fail "Version must be MAJOR.MINOR.PATCH without leading zeros."
+    shift
+fi
 mode=publish
-if [[ $# -eq 2 ]]; then
-    case "$2" in
+if [[ $# -eq 1 ]]; then
+    case "$1" in
         --draft) mode=draft ;;
         --local) mode=local ;;
         *) usage >&2; exit 1 ;;
     esac
+elif [[ $# -gt 1 ]]; then
+    usage >&2; exit 1
 fi
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
+if [[ -z "$version" ]]; then
+    [[ -t 0 ]] || fail "Pass VERSION when running without an interactive terminal."
+    local_tags="$(git tag --list 'v*')"
+    remote_tags="$(git ls-remote --tags --refs origin 'refs/tags/v*')" || fail "Could not read release tags from origin."
+    latest_version="$(
+        printf '%s\n' "$local_tags" "$remote_tags" |
+            awk '{ sub(/^.*refs\/tags\/v/, ""); sub(/^v/, ""); if ($0 ~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/) print }' |
+            sort -t . -k1,1n -k2,2n -k3,3n | tail -n 1
+    )"
+    default_version=0.1.0
+    if [[ -n "$latest_version" ]]; then
+        default_version="${latest_version%.*}.$((${latest_version##*.} + 1))"
+    fi
+    read -r -p "Release version [$default_version]: " version || fail "No version entered."
+    version="${version:-$default_version}"
+    [[ "$version" =~ $version_pattern ]] || fail "Version must be MAJOR.MINOR.PATCH without leading zeros."
+fi
 identity="${DEVELOPER_ID:-Developer ID Application: THOMAS MICHAEL ADAMO (66LB6ANTYP)}"
 profile="${NOTARY_PROFILE:-share-slice-notary}"
 [[ "$identity" == "Developer ID Application:"* ]] || fail "DEVELOPER_ID must be a Developer ID Application identity."

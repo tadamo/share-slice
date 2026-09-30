@@ -46,10 +46,12 @@ GitHub Actions runs tests. Create releases on your Mac using the Developer ID ce
 Commit your changes on `main`, then run:
 
 ```sh
-./scripts/release.sh 1.0.1
+./scripts/release.sh
 ```
 
-Choose a new version each time. The script tests, builds for Apple Silicon and Intel, signs, notarizes, verifies the ZIP, pushes `main` and the new version tag, and publishes the GitHub release. It includes install instructions and generated release notes. You don't need to create tags yourself.
+The script prompts for a version. Press Enter to use the next patch version after the highest release tag found locally or on origin, or type a different version. With no release tags, the default is 0.1.0. To skip the prompt, pass a version, for example `./scripts/release.sh 1.0.1`. An explicit version is required when running without an interactive terminal.
+
+The script tests, builds for Apple Silicon and Intel, signs, notarizes, verifies the ZIP, pushes `main` and the new version tag, and publishes the GitHub release. It includes install instructions and generated release notes. You don't need to create tags yourself.
 
 Use `--draft` to review the release on GitHub before publishing, or `--local` to build only. Files are saved in `dist/`. Existing tags and ZIPs won't be overwritten. If upload fails after the tag is pushed, the script prints a retry command.
 
