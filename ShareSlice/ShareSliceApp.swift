@@ -54,6 +54,11 @@ private struct ControlView: View {
                         .disabled(model.region == nil || model.isBusy)
                 }
             }
+            if model.isCapturing {
+                Text("Keep the share window open and unminimized so it appears in Teams. Click Show Share Window to restore it.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if model.isBusy { ProgressView().controlSize(.small) }
             if let error = model.errorMessage {
                 Text(error).foregroundStyle(.red).textSelection(.enabled)
